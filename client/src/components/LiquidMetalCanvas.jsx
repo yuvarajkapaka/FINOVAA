@@ -3,12 +3,15 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 /**
  * FINOVA Liquid Metal WebGL Shader Canvas
  * 
- * Inspired by paper.design, aidesigner.ai, and fluidkit.
- * Uses domain-warped Fractal Brownian Motion (FBM), finite-difference normal calculation,
- * and reflective metallic environment shading tuned for FINOVA's light theme.
- * 
- * License: MIT / Public Domain GLSL procedural shading.
- * Zero external dependencies.
+ * Inspired by aidesigner.ai/backgrounds/liquid-metal and paper.design/liquid-metal.
+ * Features:
+ * - Domain-warped harmonic fluid dynamics simulating viscous liquid mercury.
+ * - Finite-difference normal calculation with heightened surface curvature.
+ * - Multi-band studio lighting reflections (specular platinum glints, Fresnel sheen).
+ * - Calibrated FINOVA luxury palette (warm ivory, platinum white, sage, forest green, gold, copper).
+ * - Interactive cursor ripple with smooth spring interpolation.
+ * - Continuous, organic fluid motion even when stationary.
+ * - Respects prefers-reduced-motion; pauses on inactive tabs; zero memory leaks.
  */
 
 // Fullscreen quad vertex shader
@@ -22,7 +25,7 @@ void main() {
 }
 `;
 
-// Domain-Warped Liquid Chrome Fragment Shader
+// Molten Liquid Chrome Fragment Shader
 const FS_SOURCE = `
 precision highp float;
 
@@ -33,109 +36,41 @@ uniform vec2 u_mouse;
 uniform float u_speed;
 uniform float u_intensity;
 
-// Simplex-inspired fast procedural noise building blocks
-vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-vec4 permute(vec4 x) { return mod289(((x * 34.0) + 1.0) * x); }
-vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-
-float snoise(vec3 v) {
-  const vec2 C = vec2(1.0/6.0, 1.0/3.0);
-  const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
-
-  vec3 i  = floor(v + dot(v, C.yyy));
-  vec3 x0 = v - i + dot(i, C.xxx);
-
-  vec3 g = step(x0.yzx, x0.xyz);
-  vec3 l = 1.0 - g;
-  vec3 i1 = min(g.xyz, l.zxy);
-  vec3 i2 = max(g.xyz, l.zxy);
-
-  vec3 x1 = x0 - i1 + C.xxx;
-  vec3 x2 = x0 - i2 + C.yyy;
-  vec3 x3 = x0 - D.yyy;
-
-  i = mod289(i);
-  vec4 p = permute(permute(permute(
-              i.z + vec4(0.0, i1.z, i2.z, 1.0))
-          + i.y + vec4(0.0, i1.y, i2.y, 1.0))
-          + i.x + vec4(0.0, i1.x, i2.x, 1.0));
-
-  float n_ = 0.142857142857;
-  vec3  ns = n_ * D.wyz - D.xzx;
-
-  vec4 j = p - 49.0 * floor(p * ns.z);
-
-  vec4 x_ = floor(j * ns.z);
-  vec4 y_ = floor(j - 7.0 * x_);
-
-  vec4 x = x_ * ns.x + ns.yyyy;
-  vec4 y = y_ * ns.x + ns.yyyy;
-  vec4 h = 1.0 - abs(x) - abs(y);
-
-  vec4 b0 = vec4(x.xy, y.xy);
-  vec4 b1 = vec4(x.zw, y.zw);
-
-  vec4 s0 = floor(b0) * 2.0 + 1.0;
-  vec4 s1 = floor(b1) * 2.0 + 1.0;
-  vec4 sh = -step(h, vec4(0.0));
-
-  vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
-  vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
-
-  vec3 p0 = vec3(a0.xy, h.x);
-  vec3 p1 = vec3(a0.zw, h.y);
-  vec3 p2 = vec3(a1.xy, h.z);
-  vec3 p3 = vec3(a1.zw, h.w);
-
-  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
-  p0 *= norm.x;
-  p1 *= norm.y;
-  p2 *= norm.z;
-  p3 *= norm.w;
-
-  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-  m = m * m;
-  return 42.0 * dot(m * m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+// 2D Rotation matrix for multi-angle wave domain warping
+mat2 rot(float a) {
+  float c = cos(a);
+  float s = sin(a);
+  return mat2(c, -s, s, c);
 }
 
-// 3-octave FBM for smooth liquid evaluation
-float fbm(vec3 p) {
-  float v = 0.0;
-  float a = 0.5;
-  for (int i = 0; i < 3; i++) {
-    v += a * snoise(p);
-    p = p * 2.04 + vec3(0.15, 0.28, 0.41);
-    a *= 0.5;
-  }
-  return v;
-}
+// Multi-layered domain-warped fluid field simulating molten mercury
+float liquidField(vec2 p, float time, vec2 mouse) {
+  // Cursor-reactive gentle fluid ripple & displacement
+  vec2 d = p - mouse;
+  float dist = length(d);
+  float mousePush = exp(-dist * 3.6) * 0.28;
+  p += (d / (dist + 0.001)) * mousePush;
 
-// Organic Domain Warping (creates swirling, viscous liquid-chrome folds)
-float liquidHeight(vec2 p, float time, vec2 mouse) {
-  // Subtle cursor ripple influence
-  vec2 mDiff = p - mouse;
-  float mDist = length(mDiff);
-  float mInfluence = smoothstep(0.75, 0.0, mDist) * 0.16;
-  vec2 warpOffset = mDiff * mInfluence;
+  vec2 q = p;
+  float w = 0.0;
 
-  vec3 pos = vec3((p + warpOffset) * 1.6, time * 0.14);
+  // Harmonic 1: Broad sweeping tidal current
+  q = rot(0.54) * q;
+  w += sin(q.x * 1.9 + time * 0.44 + sin(q.y * 1.5)) * 0.48;
 
-  // Layer 1 warp
-  vec3 q = vec3(
-    fbm(pos),
-    fbm(pos + vec3(4.3, 1.7, 0.8)),
-    0.0
-  );
+  // Harmonic 2: Swirling domain warp fold
+  q = rot(1.14) * q * 1.40 + vec2(w * 0.65, time * 0.30);
+  w += sin(q.y * 2.3 + cos(q.x * 1.9 + time * 0.54)) * 0.38;
 
-  // Layer 2 warp
-  vec3 r = vec3(
-    fbm(pos + 2.8 * q + vec3(1.7, 9.2, 0.5)),
-    fbm(pos + 2.8 * q + vec3(8.3, 2.8, 1.2)),
-    0.0
-  );
+  // Harmonic 3: Viscous eddy currents
+  q = rot(-0.70) * q * 1.54 + vec2(time * 0.22, w * 0.70);
+  w += sin(q.x * 2.9 + q.y * 2.3 + time * 0.64) * 0.26;
 
-  return fbm(pos + 3.2 * r);
+  // Harmonic 4: Fine fluid ripples
+  q = rot(0.84) * q * 1.70;
+  w += sin(q.x * 3.8 - time * 0.74) * sin(q.y * 3.8 + time * 0.48) * 0.16;
+
+  return w;
 }
 
 void main() {
@@ -146,49 +81,66 @@ void main() {
 
   float t = u_time * u_speed;
 
-  // Calculate surface gradient & normals via finite differences
-  float eps = 0.0035;
-  float h = liquidHeight(p, t, m);
-  float hx = liquidHeight(p + vec2(eps, 0.0), t, m);
-  float hy = liquidHeight(p + vec2(0.0, eps), t, m);
+  // Finite differences for accurate surface gradient and normals
+  float eps = 0.006;
+  float h  = liquidField(p, t, m);
+  float hx = liquidField(p + vec2(eps, 0.0), t, m);
+  float hy = liquidField(p + vec2(0.0, eps), t, m);
 
-  vec3 normal = normalize(vec3((hx - h) / eps, (hy - h) / eps, 0.82));
+  vec2 grad = vec2((hx - h) / eps, (hy - h) / eps);
+  vec3 normal = normalize(vec3(-grad * 2.2, 1.0));
 
-  // Incident view direction and reflection vector
+  // Incident view vector and reflection ray
   vec3 viewDir = vec3(0.0, 0.0, -1.0);
   vec3 ref = reflect(viewDir, normal);
 
-  // Simulated liquid-metal studio lighting setup
-  float studioBand = sin(ref.x * 3.2 + ref.y * 2.2 + t * 0.22) * 0.5 + 0.5;
-  float chromeLight = pow(studioBand, 2.6);
+  // Chrome Studio Environment Lighting (curved lightboxes & luminous strips)
+  float studioBand1 = sin(ref.x * 3.4 + ref.y * 2.2 + t * 0.32) * 0.5 + 0.5;
+  float studioBand2 = cos(ref.x * 2.0 - ref.y * 3.4 - t * 0.22) * 0.5 + 0.5;
+  float chromeLight = pow(studioBand1, 2.2) * 0.65 + pow(studioBand2, 3.0) * 0.35;
 
-  // High-order specular highlights along fluid crests
-  vec3 lightDir = normalize(vec3(0.35, 0.55, 0.75));
-  float specPop = pow(max(dot(ref, lightDir), 0.0), 14.0);
+  // Dual specular lights for fluid crest glints
+  vec3 light1 = normalize(vec3(0.35, 0.65, 0.75));
+  vec3 light2 = normalize(vec3(-0.45, 0.35, 0.85));
+  float spec1 = pow(max(0.0, dot(ref, light1)), 32.0);
+  float spec2 = pow(max(0.0, dot(ref, light2)), 18.0);
 
-  // FINOVA Palette Color Grading for Warm Light Theme:
-  // Warm Ivory Canvas: #F2F0E8
-  vec3 cIvory = vec3(0.949, 0.941, 0.910);
-  // White Specular Gleam: #FFFFFF
-  vec3 cWhite = vec3(1.0, 1.0, 1.0);
-  // Muted Sage Reflection: #A8B39A
-  vec3 cSage = vec3(0.659, 0.702, 0.604);
-  // Soft Emerald Reflection: #2F6A4F
-  vec3 cEmerald = vec3(0.184, 0.416, 0.310);
-  // Muted Gold Accent: #D8C18A
-  vec3 cGold = vec3(0.847, 0.757, 0.541);
+  // Fresnel rim reflection
+  float fresnel = pow(1.0 - max(0.0, dot(normal, -viewDir)), 2.8);
 
-  // Liquid metallic color blending
-  vec3 metalTone = mix(cIvory, cWhite, chromeLight * 0.75);
-  metalTone = mix(metalTone, cSage, clamp(normal.x * 0.55 + 0.25, 0.0, 0.42));
-  metalTone = mix(metalTone, cEmerald, clamp(normal.y * 0.45, 0.0, 0.22));
-  metalTone = mix(metalTone, cGold, clamp(ref.z * 0.28 - 0.05, 0.0, 0.18));
+  // FINOVA Luxury Palette:
+  vec3 cIvory   = vec3(0.949, 0.941, 0.910); // Warm Ivory Canvas #F2F0E8
+  vec3 cWhite   = vec3(1.000, 1.000, 1.000); // White Gleam #FFFFFF
+  vec3 cPewter  = vec3(0.620, 0.680, 0.640); // Shaded mercury crease
+  vec3 cSage    = vec3(0.659, 0.702, 0.604); // Sage #A8B39A
+  vec3 cEmerald = vec3(0.184, 0.416, 0.310); // Soft Emerald #2F6A4F
+  vec3 cForest  = vec3(0.145, 0.294, 0.231); // Forest Green #254B3B
+  vec3 cGold    = vec3(0.847, 0.757, 0.541); // Muted Gold #D8C18A
+  vec3 cCopper  = vec3(0.784, 0.475, 0.322); // Warm Copper #C87952
 
-  // Specular sheen
-  vec3 finalColor = metalTone + specPop * cWhite * 0.38;
+  // Base molten mercury surface: transitioning from cool shaded pewter in creases to platinum crests
+  vec3 mercury = mix(cPewter, cWhite, smoothstep(-0.65, 0.70, h));
 
-  // Luminous light-theme alpha
-  gl_FragColor = vec4(finalColor, u_intensity);
+  // Add studio chrome reflective sheen
+  mercury = mix(mercury, cWhite, chromeLight * 0.52);
+
+  // Dynamic metallic reflections matching FINOVA color identity
+  mercury = mix(mercury, cSage, clamp(normal.x * 0.42 + 0.14, 0.0, 0.26));
+  mercury = mix(mercury, cEmerald, clamp(-normal.y * 0.36, 0.0, 0.22));
+  mercury = mix(mercury, cForest, clamp(-normal.x * 0.32 - 0.04, 0.0, 0.16));
+  mercury = mix(mercury, cGold, clamp(ref.x * 0.32 + ref.y * 0.22, 0.0, 0.20));
+  mercury = mix(mercury, cCopper, clamp(-ref.x * 0.26 - 0.04, 0.0, 0.15));
+
+  // High-order specular highlights along crests
+  mercury += (spec1 * 0.65 + spec2 * 0.35) * cWhite;
+
+  // Fresnel edge luminosity
+  mercury = mix(mercury, cWhite, fresnel * 0.35);
+
+  // Editorial blend over warm ivory canvas
+  vec3 finalColor = mix(cIvory, mercury, clamp(u_intensity, 0.0, 1.0));
+
+  gl_FragColor = vec4(finalColor, 1.0);
 }
 `;
 
@@ -225,8 +177,8 @@ function createProgram(gl, vsSource, fsSource) {
 }
 
 export default function LiquidMetalCanvas({
-  intensity = 0.45,
-  speed = 0.5,
+  intensity = 0.72,
+  speed = 0.50,
   onFallback = null
 }) {
   const canvasRef = useRef(null);
@@ -251,9 +203,9 @@ export default function LiquidMetalCanvas({
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     // Get WebGL context (WebGL2 preferred, fallback to WebGL1)
-    let gl = canvas.getContext('webgl2', { alpha: true, antialias: false, powerPreference: 'low-power' });
+    let gl = canvas.getContext('webgl2', { alpha: false, antialias: false, powerPreference: 'low-power' });
     if (!gl) {
-      gl = canvas.getContext('webgl', { alpha: true, antialias: false, powerPreference: 'low-power' });
+      gl = canvas.getContext('webgl', { alpha: false, antialias: false, powerPreference: 'low-power' });
     }
 
     if (!gl) {
@@ -359,7 +311,7 @@ export default function LiquidMetalCanvas({
 
     function render(now) {
       if (!lastTimeRef.current) lastTimeRef.current = now;
-      const delta = (now - lastTimeRef.current) * 0.001;
+      const delta = Math.min((now - lastTimeRef.current) * 0.001, 0.1);
       lastTimeRef.current = now;
 
       if (!isPaused && gl && program) {
@@ -367,12 +319,12 @@ export default function LiquidMetalCanvas({
         if (!prefersReducedMotion) {
           timeRef.current += delta;
         } else {
-          timeRef.current = 2.0; // Static frame for reduced motion
+          timeRef.current = 2.5; // Static frame for reduced motion
         }
 
         // Smooth mouse lerping
-        mouseRef.current.currentX += (mouseRef.current.targetX - mouseRef.current.currentX) * 0.05;
-        mouseRef.current.currentY += (mouseRef.current.targetY - mouseRef.current.currentY) * 0.05;
+        mouseRef.current.currentX += (mouseRef.current.targetX - mouseRef.current.currentX) * 0.06;
+        mouseRef.current.currentY += (mouseRef.current.targetY - mouseRef.current.currentY) * 0.06;
 
         gl.useProgram(program);
         gl.uniform2f(uniforms.u_resolution, canvas.width, canvas.height);
