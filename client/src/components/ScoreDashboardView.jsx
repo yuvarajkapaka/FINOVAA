@@ -19,6 +19,7 @@ import {
   Check,
   X
 } from 'lucide-react';
+import { apiFetch } from '../api/config';
 
 export default function ScoreDashboardView({ onNavigateTab }) {
   const [scoreData, setScoreData] = useState(null);
@@ -35,8 +36,8 @@ export default function ScoreDashboardView({ onNavigateTab }) {
     try {
       setLoading(true);
       const [scoreRes, boardRes] = await Promise.all([
-        fetch('/api/score'),
-        fetch('/api/leaderboard')
+        apiFetch('/api/score'),
+        apiFetch('/api/leaderboard')
       ]);
 
       const scoreJson = await scoreRes.json();
@@ -60,7 +61,7 @@ export default function ScoreDashboardView({ onNavigateTab }) {
       setIsExamModalOpen(true);
       setExamResult(null);
       setUserAnswers({});
-      const res = await fetch('/api/score/literacy-check');
+      const res = await apiFetch('/api/score/literacy-check');
       const data = await res.json();
       if (data.success) {
         setExamQuestions(data.questions || []);
@@ -81,7 +82,7 @@ export default function ScoreDashboardView({ onNavigateTab }) {
     e.preventDefault();
     try {
       setSubmittingExam(true);
-      const res = await fetch('/api/score/literacy-check', {
+      const res = await apiFetch('/api/score/literacy-check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ answers: userAnswers })

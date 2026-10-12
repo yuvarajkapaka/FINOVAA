@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { PORT } from './config.js';
+import { PORT, NODE_ENV, CLIENT_ORIGIN } from './config.js';
 import { getDatabase } from './db/database.js';
 import { initSchema } from './db/schema.js';
 import walletRoutes from './routes/walletRoutes.js';
@@ -16,8 +16,45 @@ const app = express();
 // Initialize database schema safely on start
 initSchema();
 
+// Permitted local development origins
+const devOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173'
+];
+
+// Parse explicit CLIENT_ORIGIN (e.g. single URL or comma-separated list)
+const configuredOrigins = CLIENT_ORIGIN
+  ? CLIENT_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean)
+  : [];
+
+// Dynamic CORS configuration:
+// If CLIENT_ORIGIN is explicitly configured, avoid wildcard CORS in production
+// and only permit the configured production origin(s) plus local dev origins.
+const corsOptions = configuredOrigins.length > 0
+  ? {
+      origin: (origin, callback) => {
+        // Allow requests with no origin (e.g., curl, mobile apps, server-to-server health checks)
+        if (!origin) return callback(null, true);
+
+        if (configuredOrigins.includes(origin) || devOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+
+        return callback(new Error(`Origin ${origin} is not permitted by FINOVA CORS policy`));
+      },
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization']
+    }
+  : {
+      origin: true,
+      credentials: true
+    };
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Request logging middleware in development

@@ -27,6 +27,7 @@ import {
   BookOpen,
   Scale
 } from 'lucide-react';
+import { apiFetch } from '../api/config';
 
 export default function SimulationView({ wallet, goalsData, portfolioData, onOpenEvents }) {
   const [scenarios, setScenarios] = useState([]);
@@ -46,7 +47,7 @@ export default function SimulationView({ wallet, goalsData, portfolioData, onOpe
     async function loadScenarios() {
       try {
         setLoading(true);
-        const res = await fetch('/api/simulation/scenarios');
+        const res = await apiFetch('/api/simulation/scenarios');
         const data = await res.json();
         if (data.success && data.scenarios.length > 0) {
           setScenarios(data.scenarios);
@@ -66,7 +67,7 @@ export default function SimulationView({ wallet, goalsData, portfolioData, onOpe
   const evaluateScenario = async (scenarioId, choiceId = null) => {
     try {
       setIsEvaluating(true);
-      const res = await fetch('/api/simulation/evaluate', {
+      const res = await apiFetch('/api/simulation/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

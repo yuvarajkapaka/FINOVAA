@@ -23,6 +23,7 @@ import AmbientBackground from './components/AmbientBackground';
 import FinovaLogo from './components/FinovaLogo';
 import Footer from './components/Footer';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { apiFetch } from './api/config';
 
 export default function App() {
   // Navigation states: 'WORLD' (default) | 'WALLET' | 'SAVINGS' | 'ACADEMY' | 'MARKET' | 'SIMULATION' | 'SCORE' | 'MENTOR' | 'OVERVIEW'
@@ -85,15 +86,15 @@ export default function App() {
 
     try {
       const [walletRes, txRes, catRes, goalsRes, goalCatRes, academyRes, marketRes, portfolioRes, scoreRes] = await Promise.all([
-        fetch('/api/wallet'),
-        fetch('/api/transactions?limit=50'),
-        fetch('/api/wallet/categories'),
-        fetch('/api/goals'),
-        fetch('/api/goals/categories'),
-        fetch('/api/academy/lessons'),
-        fetch('/api/marketplace/assets'),
-        fetch('/api/portfolio'),
-        fetch('/api/score')
+        apiFetch('/api/wallet'),
+        apiFetch('/api/transactions?limit=50'),
+        apiFetch('/api/wallet/categories'),
+        apiFetch('/api/goals'),
+        apiFetch('/api/goals/categories'),
+        apiFetch('/api/academy/lessons'),
+        apiFetch('/api/marketplace/assets'),
+        apiFetch('/api/portfolio'),
+        apiFetch('/api/score')
       ]);
 
       if (!walletRes.ok) throw new Error(`Failed to load wallet data (${walletRes.status})`);
@@ -184,7 +185,7 @@ export default function App() {
   const handleAdvanceCycle = async () => {
     setIsAdvancingCycle(true);
     try {
-      const res = await fetch('/api/marketplace/advance', { method: 'POST' });
+      const res = await apiFetch('/api/marketplace/advance', { method: 'POST' });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || 'Failed to advance market cycle.');

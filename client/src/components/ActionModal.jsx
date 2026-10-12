@@ -10,6 +10,7 @@ import {
   Vault,
   ArrowRightLeft
 } from 'lucide-react';
+import { apiFetch } from '../api/config';
 
 const LARGE_EXPENSE_THRESHOLD_INR = 10000;
 
@@ -219,7 +220,7 @@ export default function ActionModal({
         ...((actionType === 'INCOME' || actionType === 'EXPENSE') && category ? { category } : {})
       };
 
-      const res = await fetch(config.endpoint, {
+      const res = await apiFetch(config.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

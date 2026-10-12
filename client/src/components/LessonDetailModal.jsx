@@ -12,6 +12,7 @@ import {
   Target, 
   Lightbulb
 } from 'lucide-react';
+import { apiFetch } from '../api/config';
 
 export default function LessonDetailModal({
   isOpen,
@@ -46,7 +47,7 @@ export default function LessonDetailModal({
     setLoading(true);
     setError(null);
 
-    fetch(`/api/academy/lessons/${lessonId}`)
+    apiFetch(`/api/academy/lessons/${lessonId}`)
       .then(res => {
         if (!res.ok) throw new Error(`Failed to load mission #${lessonId}`);
         return res.json();
@@ -66,7 +67,7 @@ export default function LessonDetailModal({
   const handleMarkComplete = async () => {
     setMarkingComplete(true);
     try {
-      const res = await fetch(`/api/academy/lessons/${lesson.id}/complete`, {
+      const res = await apiFetch(`/api/academy/lessons/${lesson.id}/complete`, {
         method: 'POST'
       });
       const data = await res.json();
@@ -103,7 +104,7 @@ export default function LessonDetailModal({
     setError(null);
 
     try {
-      const res = await fetch(`/api/academy/lessons/${lesson.id}/quiz/check`, {
+      const res = await apiFetch(`/api/academy/lessons/${lesson.id}/quiz/check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -146,7 +147,7 @@ export default function LessonDetailModal({
     setError(null);
 
     try {
-      const res = await fetch(`/api/academy/lessons/${lesson.id}/quiz`, {
+      const res = await apiFetch(`/api/academy/lessons/${lesson.id}/quiz`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ answers: selectedAnswers })

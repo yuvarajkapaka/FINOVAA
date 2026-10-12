@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, TrendingUp, TrendingDown, AlertTriangle, Loader2, Info } from 'lucide-react';
+import { apiFetch } from '../api/config';
 
 export default function TradeModal({
   isOpen,
@@ -137,7 +138,7 @@ export default function TradeModal({
         quantity: numQuantity
       };
 
-      const res = await fetch(endpoint, {
+      const res = await apiFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

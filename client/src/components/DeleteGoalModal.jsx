@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Loader2, X, ShieldCheck } from 'lucide-react';
+import { apiFetch } from '../api/config';
 
 export default function DeleteGoalModal({
   isOpen,
@@ -16,7 +17,7 @@ export default function DeleteGoalModal({
     setIsDeleting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/goals/${goal.id}`, {
+      const res = await apiFetch(`/api/goals/${goal.id}`, {
         method: 'DELETE'
       });
       const data = await res.json();

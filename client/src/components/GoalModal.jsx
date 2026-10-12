@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   ArrowRight
 } from 'lucide-react';
+import { apiFetch } from '../api/config';
 
 export default function GoalModal({
   isOpen,
@@ -172,7 +173,7 @@ export default function GoalModal({
         const url = mode === 'CREATE' ? '/api/goals' : `/api/goals/${goal.id}`;
         const method = mode === 'CREATE' ? 'POST' : 'PUT';
 
-        const res = await fetch(url, {
+        const res = await apiFetch(url, {
           method,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -196,7 +197,7 @@ export default function GoalModal({
 
       setIsSubmitting(true);
       try {
-        const res = await fetch(`/api/goals/${goal.id}/contribute`, {
+        const res = await apiFetch(`/api/goals/${goal.id}/contribute`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -223,7 +224,7 @@ export default function GoalModal({
 
       setIsSubmitting(true);
       try {
-        const res = await fetch(`/api/goals/${goal.id}/withdraw`, {
+        const res = await apiFetch(`/api/goals/${goal.id}/withdraw`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

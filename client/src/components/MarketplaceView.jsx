@@ -18,6 +18,7 @@ import {
   Search,
   Scale
 } from 'lucide-react';
+import { apiFetch } from '../api/config';
 import { 
   ResponsiveContainer, 
   LineChart, 
@@ -94,7 +95,7 @@ export default function MarketplaceView({
 
   const handleInspectAsset = (asset) => {
     setSelectedAssetForDetails(asset);
-    fetch('/api/score/record-activity', {
+    apiFetch('/api/score/record-activity', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -116,7 +117,7 @@ export default function MarketplaceView({
 
     const targetAsset = assets.find(a => a.id === assetId);
     if (targetAsset) {
-      fetch('/api/score/record-activity', {
+      apiFetch('/api/score/record-activity', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

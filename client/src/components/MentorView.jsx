@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   ArrowRight
 } from 'lucide-react';
+import { apiFetch } from '../api/config';
 
 const DEFAULT_SUGGESTED_QUESTIONS = [
   'What is compound interest?',
@@ -84,8 +85,8 @@ Click any of the suggested questions below, or type your own question to begin!`
     setIsRefreshingStatus(true);
     try {
       const [statusRes, ctxRes] = await Promise.all([
-        fetch('/api/mentor/status'),
-        fetch('/api/mentor/context')
+        apiFetch('/api/mentor/status'),
+        apiFetch('/api/mentor/context')
       ]);
 
       if (statusRes.ok) {
@@ -134,7 +135,7 @@ Click any of the suggested questions below, or type your own question to begin!`
           content: m.content
         }));
 
-      const res = await fetch('/api/mentor/ask', {
+      const res = await apiFetch('/api/mentor/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
