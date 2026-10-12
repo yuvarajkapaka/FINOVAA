@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 40 40" fill="none">
+  <defs>
+    <linearGradient id="finovaEmerald" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#2F6A4F" />
+      <stop offset="100%" stopColor="#254B3B" />
+    </linearGradient>
+    <linearGradient id="finovaSage" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#BAC3AF" />
+      <stop offset="100%" stopColor="#8E9A80" />
+    </linearGradient>
+    <linearGradient id="finovaNavy" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#1E3542" />
+      <stop offset="100%" stopColor="#182B35" />
+    </linearGradient>
+    <linearGradient id="finovaGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#E6D4AA" />
+      <stop offset="100%" stopColor="#D8C18A" />
+    </linearGradient>
+  </defs>
+  <path d="M 6 4 L 16 4 L 16 36 L 6 30 Z" fill="url(#finovaEmerald)" />
+  <path d="M 6 30 L 16 36 L 16 40 L 6 34 Z" fill="url(#finovaNavy)" opacity="0.95" />
+  <path d="M 16 4 L 34 4 L 28 14 L 16 14 Z" fill="url(#finovaEmerald)" />
+  <path d="M 34 4 L 28 14 L 32 17 L 38 7 Z" fill="url(#finovaSage)" />
+  <path d="M 16 18 L 29 18 L 24 26 L 16 26 Z" fill="url(#finovaSage)" />
+  <path d="M 29 18 L 24 26 L 27 28 L 32 20 Z" fill="url(#finovaNavy)" opacity="0.9" />
+  <path d="M 16 14 L 20 18 L 16 20 Z" fill="url(#finovaNavy)" opacity="0.85" />
+  <circle cx="16" cy="14" r="1.2" fill="url(#finovaGold)" opacity="0.85" />
+</svg>
