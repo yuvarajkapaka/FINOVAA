@@ -137,6 +137,122 @@ export default function SimulationView({ wallet, goalsData, portfolioData, onOpe
     { id: 'STAGE_6_LEARN', step: '06', label: 'What You Learned' },
   ];
 
+  const getStrategyBadge = (label) => {
+    switch (label) {
+      case 'Liquidity Preserved':
+        return {
+          icon: ShieldCheck,
+          className: 'bg-forest/10 text-forest border-forest/20',
+          label: 'Liquidity Preserved'
+        };
+      case 'Budget-Aware':
+        return {
+          icon: Wallet,
+          className: 'bg-forest/10 text-forest border-forest/20',
+          label: 'Budget-Aware'
+        };
+      case 'Learning Opportunity':
+        return {
+          icon: AlertTriangle,
+          className: 'bg-copper/10 text-copper border-copper/30',
+          label: 'Learning Opportunity'
+        };
+      case 'Goal-Aligned':
+        return {
+          icon: Target,
+          className: 'bg-forest/10 text-forest border-forest/20',
+          label: 'Goal-Aligned'
+        };
+      case 'Goal Trade-Off':
+        return {
+          icon: Scale,
+          className: 'bg-copper/10 text-copper border-copper/30',
+          label: 'Goal Trade-Off'
+        };
+      default:
+        return {
+          icon: Compass,
+          className: 'bg-canvas-subtle text-ink-muted border-edge',
+          label: label || 'Strategy'
+        };
+    }
+  };
+
+  const getChoiceImpactDetails = (choice, evalItem, scenario) => {
+    if (evalItem?.deltas) {
+      const { deltas } = evalItem;
+      const impacts = [];
+      if (deltas.cash_delta_paise !== 0) {
+        impacts.push({
+          label: 'Available Cash',
+          delta: deltas.formatted_cash_delta,
+          isNegative: deltas.cash_delta_paise < 0,
+          color: deltas.cash_delta_paise < 0 ? 'text-copper' : 'text-forest'
+        });
+      }
+      if (deltas.savings_delta_paise !== 0) {
+        impacts.push({
+          label: 'Emergency Savings',
+          delta: deltas.formatted_savings_delta,
+          isNegative: deltas.savings_delta_paise < 0,
+          color: deltas.savings_delta_paise < 0 ? 'text-copper' : 'text-forest'
+        });
+      }
+      if (deltas.investments_delta_paise !== 0) {
+        impacts.push({
+          label: 'Virtual Investments',
+          delta: deltas.formatted_investments_delta,
+          isNegative: deltas.investments_delta_paise < 0,
+          color: deltas.investments_delta_paise < 0 ? 'text-copper' : 'text-forest'
+        });
+      }
+
+      let sourceAccount = 'Operational Cash';
+      if (deltas.savings_delta_paise < 0) sourceAccount = 'Emergency Buffer';
+      else if (deltas.cash_delta_paise < 0) sourceAccount = 'Available Cash';
+      else if (deltas.investments_delta_paise < 0) sourceAccount = 'Liquidated Assets';
+
+      return {
+        sourceAccount,
+        impacts: impacts.length > 0 ? impacts : [{ label: 'Account Balances', delta: '₹0.00 change', isNegative: false, color: 'text-ink-muted' }],
+        netWealthDelta: deltas.formatted_wealth_delta,
+        note: evalItem.goal_impact_note
+      };
+    }
+
+    const amt = scenario?.formatted_event_amount || '₹8,000';
+    if (choice.action_type === 'USE_SAVINGS') {
+      return {
+        sourceAccount: 'Emergency Buffer',
+        impacts: [{ label: 'Emergency Savings', delta: `-${amt}`, isNegative: true, color: 'text-copper' }],
+        netWealthDelta: `-${amt}`,
+        note: 'Drawn directly from emergency buffer; daily cash preserved.'
+      };
+    }
+    if (choice.action_type === 'USE_CASH') {
+      return {
+        sourceAccount: 'Available Cash',
+        impacts: [{ label: 'Available Cash', delta: `-${amt}`, isNegative: true, color: 'text-copper' }],
+        netWealthDelta: `-${amt}`,
+        note: 'Drawn from liquid cash; emergency buffer preserved.'
+      };
+    }
+    if (choice.action_type === 'LIQUIDATE_INVESTMENT') {
+      return {
+        sourceAccount: 'Liquidated Assets',
+        impacts: [{ label: 'Virtual Investments', delta: `-${amt}`, isNegative: true, color: 'text-copper' }],
+        netWealthDelta: `-${amt}`,
+        note: 'Units sold to pay urgent obligation.'
+      };
+    }
+    return {
+      sourceAccount: 'Budget Outflow',
+      impacts: [{ label: 'Account Allocation', delta: amt, isNegative: false, color: 'text-forest' }],
+      netWealthDelta: '₹0.00',
+      note: choice.tradeoff_summary
+    };
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* 1. SCENARIO CHAMBER HEADER & 5-SCENARIO NAVIGATOR */}
@@ -214,8 +330,8 @@ export default function SimulationView({ wallet, goalsData, portfolioData, onOpe
         {/* Stage Progress Bar Indicator */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-edge">
           <div className="flex items-center space-x-2">
-            <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-forest/10 text-forest border border-forest/20">
-              {activeScenario?.type || 'SHOCK'}
+            <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-forest/10 text-forest border border-forest/20 uppercase">
+              {activeScenario?.category || activeScenario?.type || 'Unexpected Expense'}
             </span>
             <h2 className="font-serif text-lg font-bold text-ink">
               {activeScenario?.title}
@@ -267,25 +383,25 @@ export default function SimulationView({ wallet, goalsData, portfolioData, onOpe
                 <div className="p-3.5 rounded-xl bg-canvas-subtle border border-edge">
                   <span className="text-[10px] uppercase font-semibold text-ink-muted block">Available Money</span>
                   <span className="font-mono text-base font-bold text-ink mt-0.5 block">
-                    {snapshot?.formatted_available_cash || '₹0.00'}
+                    {snapshot?.formatted_cash || snapshot?.formatted_available_cash || '₹0.00'}
                   </span>
                 </div>
                 <div className="p-3.5 rounded-xl bg-canvas-subtle border border-edge">
                   <span className="text-[10px] uppercase font-semibold text-ink-muted block">Emergency Savings</span>
                   <span className="font-mono text-base font-bold text-ink mt-0.5 block">
-                    {snapshot?.formatted_savings || '₹0.00'}
+                    {snapshot?.formatted_savings || snapshot?.formatted_emergency_fund || '₹0.00'}
                   </span>
                 </div>
                 <div className="p-3.5 rounded-xl bg-canvas-subtle border border-edge">
                   <span className="text-[10px] uppercase font-semibold text-ink-muted block">Your Investments</span>
                   <span className="font-mono text-base font-bold text-ink mt-0.5 block">
-                    {snapshot?.formatted_portfolio_value || '₹0.00'}
+                    {snapshot?.formatted_investments || snapshot?.formatted_portfolio_value || '₹0.00'}
                   </span>
                 </div>
                 <div className="p-3.5 rounded-xl bg-canvas-subtle border border-edge">
-                  <span className="text-[10px] uppercase font-semibold text-ink-muted block">Money Skills Score</span>
+                  <span className="text-[10px] uppercase font-semibold text-ink-muted block">Total Virtual Wealth</span>
                   <span className="font-mono text-base font-bold text-forest mt-0.5 block">
-                    {snapshot?.literacy_score || '0.0'} / 100
+                    {snapshot?.formatted_total_wealth || '₹0.00'}
                   </span>
                 </div>
               </div>
@@ -314,6 +430,20 @@ export default function SimulationView({ wallet, goalsData, portfolioData, onOpe
                 Before selecting a response, investigate how this shock interacts with your baseline accounts across three vital pillars.
               </p>
             </div>
+
+            {/* Context Metrics Summary */}
+            {activeScenario?.formatted_event_amount && (
+              <div className="p-4 rounded-2xl bg-canvas-subtle border border-edge flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold text-ink-muted uppercase tracking-wider text-[10px]">Financial Obligation:</span>
+                  <span className="font-mono font-bold text-ink text-sm">{activeScenario.formatted_event_amount}</span>
+                </div>
+                <div className="text-ink-muted">
+                  <span className="font-semibold text-forest">Objective: </span>
+                  <span>{activeScenario.learning_objective}</span>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-5 rounded-2xl bg-canvas-subtle border border-edge space-y-2">
@@ -374,47 +504,136 @@ export default function SimulationView({ wallet, goalsData, portfolioData, onOpe
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* 3 Distinct Decision Cards Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               {activeScenario?.choices?.map((choice, idx) => {
                 const isSelected = activeChoiceId === choice.id;
+                const strategyBadge = getStrategyBadge(choice.label);
+                const StrategyIcon = strategyBadge.icon;
+                const choiceEval = evaluations.find(e => e.choice_id === choice.id);
+                const impactDetails = getChoiceImpactDetails(choice, choiceEval, activeScenario);
 
                 return (
                   <div
                     key={choice.id}
                     onClick={() => setActiveChoiceId(choice.id)}
-                    className={`rounded-2xl border p-5 cursor-pointer transition-all duration-250 ease-out fade-up-stagger flex flex-col justify-between ${
+                    className={`rounded-3xl border p-5 sm:p-6 cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-4 ${
                       isSelected
                         ? 'bg-canvas-white border-forest ring-2 ring-forest/30 shadow-md -translate-y-1'
-                        : 'bg-canvas-subtle border-edge hover:border-forest/60 hover:bg-canvas-white hover:-translate-y-1 hover:shadow-md'
+                        : 'bg-canvas-subtle border-edge hover:border-forest/50 hover:bg-canvas-white hover:-translate-y-1 hover:shadow-xs'
                     }`}
-                    style={{ animationDelay: `${idx * 60}ms` }}
                   >
-                    <div className="space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase transition-colors duration-200 ${
-                          isSelected ? 'bg-forest text-canvas-white border-forest' : 'bg-canvas-white text-ink-muted border-edge'
-                        }`}>
-                          Option {choice.id}
-                        </span>
-                        {isSelected && (
-                          <span className="text-[11px] font-semibold text-forest flex items-center gap-1 animate-in fade-in duration-200">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Selected
+                    <div className="space-y-3.5">
+                      {/* Card Header: Option Tag & Strategy Category Badge */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-canvas-white border border-edge text-ink-muted">
+                            Option 0{idx + 1}
                           </span>
+                          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border inline-flex items-center gap-1 uppercase tracking-wider ${strategyBadge.className}`}>
+                            <StrategyIcon className="w-3 h-3 shrink-0" />
+                            <span>{choice.label || 'Strategy'}</span>
+                          </span>
+                        </div>
+
+                        {isSelected ? (
+                          <span className="text-[11px] font-bold text-forest flex items-center gap-1 bg-forest/10 px-2 py-0.5 rounded-full border border-forest/20 shrink-0">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Selected</span>
+                          </span>
+                        ) : (
+                          <span className="w-4 h-4 rounded-full border-2 border-edge hover:border-forest/40 transition-colors shrink-0" />
                         )}
                       </div>
 
-                      <h4 className="font-serif text-sm font-bold text-ink">
-                        {choice.text}
+                      {/* Decision Title */}
+                      <h4 className="font-serif text-base font-bold text-ink leading-snug">
+                        {choice.title || choice.text}
                       </h4>
 
+                      {/* Clear Narrative Description */}
                       <p className="text-xs text-ink-muted leading-relaxed">
-                        {choice.description || 'Applies deliberate balance reallocation to address the shock scenario.'}
+                        {choice.summary || choice.description}
                       </p>
+
+                      {/* Virtual Money Cost & Consequence Box */}
+                      <div className="p-3.5 rounded-2xl bg-canvas-white border border-edge/80 space-y-2 text-xs">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-semibold text-ink-muted uppercase tracking-wider text-[10px]">
+                            Required Outlay
+                          </span>
+                          <span className="font-mono font-bold text-ink">
+                            {activeScenario?.formatted_event_amount || '₹8,000.00'}
+                          </span>
+                        </div>
+
+                        <div className="pt-2 border-t border-edge/60 space-y-1.5 text-[11px]">
+                          <div className="flex items-center justify-between">
+                            <span className="text-ink-muted">Primary Fund Source:</span>
+                            <span className="font-mono font-bold text-ink">
+                              {impactDetails.sourceAccount}
+                            </span>
+                          </div>
+
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-ink-muted shrink-0">Balance Impact:</span>
+                            <div className="text-right font-mono space-y-0.5">
+                              {impactDetails.impacts.map((imp, impIdx) => (
+                                <div key={impIdx} className={`font-bold ${imp.color}`}>
+                                  {imp.label}: {imp.delta}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Strategic Trade-Off Callout */}
+                      {choice.tradeoff_summary && (
+                        <div className="p-3 rounded-xl bg-forest/5 border border-forest/15 space-y-1">
+                          <div className="flex items-center space-x-1.5 text-[10px] font-bold uppercase tracking-wider text-forest">
+                            <Scale className="w-3.5 h-3.5 shrink-0" />
+                            <span>Financial Trade-Off</span>
+                          </div>
+                          <p className="text-xs text-ink-muted leading-relaxed">
+                            {choice.tradeoff_summary}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Pros & Cons Checklist */}
+                      {((choice.pros && choice.pros.length > 0) || (choice.cons && choice.cons.length > 0)) && (
+                        <div className="space-y-2 pt-1 text-xs">
+                          {choice.pros && choice.pros.length > 0 && (
+                            <div className="space-y-1">
+                              {choice.pros.slice(0, 2).map((pro, pIdx) => (
+                                <div key={pIdx} className="flex items-start space-x-1.5 text-[11px] text-ink leading-relaxed">
+                                  <Check className="w-3.5 h-3.5 text-forest shrink-0 mt-0.5" />
+                                  <span>{pro}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {choice.cons && choice.cons.length > 0 && (
+                            <div className="space-y-1 pt-1.5 border-t border-edge/60">
+                              {choice.cons.slice(0, 2).map((con, cIdx) => (
+                                <div key={cIdx} className="flex items-start space-x-1.5 text-[11px] text-copper leading-relaxed">
+                                  <AlertTriangle className="w-3.5 h-3.5 text-copper shrink-0 mt-0.5" />
+                                  <span>{con}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-edge text-[11px] text-ink-muted flex items-center justify-between">
-                      <span>Click to select option</span>
-                      <ArrowRight className="w-3.5 h-3.5 text-forest" />
+                    {/* Card Action Footer */}
+                    <div className={`mt-4 pt-3 border-t text-xs flex items-center justify-between font-medium ${
+                      isSelected ? 'border-forest/30 text-forest font-bold' : 'border-edge text-ink-muted'
+                    }`}>
+                      <span>{isSelected ? '✓ Strategy Selected' : 'Click to select this strategy'}</span>
+                      <ArrowRight className={`w-3.5 h-3.5 ${isSelected ? 'text-forest translate-x-0.5' : 'text-ink-muted'} transition-transform`} />
                     </div>
                   </div>
                 );
@@ -448,15 +667,21 @@ export default function SimulationView({ wallet, goalsData, portfolioData, onOpe
             <div className="p-6 rounded-2xl bg-canvas-subtle border border-edge space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-forest px-2.5 py-0.5 rounded-full bg-forest/10 border border-forest/20 font-mono">
-                  Simulated Outcome
+                  Simulated Outcome • {selectedEvaluation.label}
                 </span>
                 <span className="text-xs text-ink font-semibold">
-                  {selectedEvaluation.choice_text}
+                  {selectedEvaluation.choice_title || selectedEvaluation.choice_text}
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-ink leading-relaxed font-medium">
-                {selectedEvaluation.rationale}
+                {selectedEvaluation.educational_verdict || selectedEvaluation.tradeoff_summary || selectedEvaluation.rationale}
               </p>
+              {selectedEvaluation.goal_impact_note && (
+                <div className="p-3 bg-canvas-white rounded-xl border border-edge text-xs text-ink-muted flex items-start space-x-2">
+                  <Info className="w-4 h-4 text-forest shrink-0 mt-0.5" />
+                  <span>{selectedEvaluation.goal_impact_note}</span>
+                </div>
+              )}
             </div>
 
             {/* Before vs After Quantitative Comparisons */}
@@ -467,55 +692,82 @@ export default function SimulationView({ wallet, goalsData, portfolioData, onOpe
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className={`p-4 rounded-xl bg-canvas-subtle border border-edge space-y-1.5 ${
-                  selectedEvaluation.delta_cash > 0 ? 'highlight-pos' : selectedEvaluation.delta_cash < 0 ? 'highlight-neg' : ''
+                  (selectedEvaluation.deltas?.cash_delta_paise || 0) > 0 ? 'highlight-pos' : (selectedEvaluation.deltas?.cash_delta_paise || 0) < 0 ? 'highlight-neg' : ''
                 }`}>
-                  <span className="text-[10px] uppercase font-semibold text-ink-muted block">Available Money</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-semibold text-ink-muted">Available Money</span>
+                    <span className="font-mono text-[10px] font-bold text-ink-muted">
+                      {selectedEvaluation.deltas?.formatted_cash_delta || '₹0.00'}
+                    </span>
+                  </div>
                   <div className="flex items-baseline space-x-2 font-mono">
-                    <span className="text-ink-muted text-xs">{selectedEvaluation.before?.formatted_cash}</span>
+                    <span className="text-ink-muted text-xs">
+                      {selectedEvaluation.before?.formatted_cash || snapshot?.formatted_cash}
+                    </span>
                     <span className="text-ink-subtle">→</span>
-                    <span className="text-base font-bold text-ink">{selectedEvaluation.after?.formatted_cash}</span>
+                    <span className="text-base font-bold text-ink">
+                      {selectedEvaluation.after?.formatted_cash || selectedEvaluation.resulting_state?.formatted_cash}
+                    </span>
                   </div>
                   <div className="w-full bg-edge/70 rounded-full h-1 overflow-hidden mt-1">
                     <div 
                       className="h-full bg-forest rounded-full transition-all duration-700 ease-out"
                       style={{ 
-                        width: `${Math.min(100, ((selectedEvaluation.after?.cash_paise || 0) / Math.max(1, selectedEvaluation.before?.cash_paise || 1)) * 100)}%` 
+                        width: `${Math.min(100, ((selectedEvaluation.resulting_state?.cash_paise || selectedEvaluation.after?.cash_paise || 0) / Math.max(1, selectedEvaluation.before?.cash_paise || snapshot?.cash_paise || 1)) * 100)}%` 
                       }}
                     />
                   </div>
                 </div>
 
                 <div className={`p-4 rounded-xl bg-canvas-subtle border border-edge space-y-1.5 ${
-                  selectedEvaluation.delta_savings > 0 ? 'highlight-pos' : selectedEvaluation.delta_savings < 0 ? 'highlight-neg' : ''
+                  (selectedEvaluation.deltas?.savings_delta_paise || 0) > 0 ? 'highlight-pos' : (selectedEvaluation.deltas?.savings_delta_paise || 0) < 0 ? 'highlight-neg' : ''
                 }`}>
-                  <span className="text-[10px] uppercase font-semibold text-ink-muted block">Emergency Savings</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-semibold text-ink-muted">Emergency Savings</span>
+                    <span className="font-mono text-[10px] font-bold text-ink-muted">
+                      {selectedEvaluation.deltas?.formatted_savings_delta || '₹0.00'}
+                    </span>
+                  </div>
                   <div className="flex items-baseline space-x-2 font-mono">
-                    <span className="text-ink-muted text-xs">{selectedEvaluation.before?.formatted_savings}</span>
+                    <span className="text-ink-muted text-xs">
+                      {selectedEvaluation.before?.formatted_savings || snapshot?.formatted_savings}
+                    </span>
                     <span className="text-ink-subtle">→</span>
-                    <span className="text-base font-bold text-ink">{selectedEvaluation.after?.formatted_savings}</span>
+                    <span className="text-base font-bold text-ink">
+                      {selectedEvaluation.after?.formatted_savings || selectedEvaluation.resulting_state?.formatted_savings}
+                    </span>
                   </div>
                   <div className="w-full bg-edge/70 rounded-full h-1 overflow-hidden mt-1">
                     <div 
                       className="h-full bg-forest rounded-full transition-all duration-700 ease-out"
                       style={{ 
-                        width: `${Math.min(100, ((selectedEvaluation.after?.savings_paise || 0) / Math.max(1, selectedEvaluation.before?.savings_paise || 1)) * 100)}%` 
+                        width: `${Math.min(100, ((selectedEvaluation.resulting_state?.savings_paise || selectedEvaluation.after?.savings_paise || 0) / Math.max(1, selectedEvaluation.before?.savings_paise || snapshot?.savings_paise || 1)) * 100)}%` 
                       }}
                     />
                   </div>
                 </div>
 
                 <div className="p-4 rounded-xl bg-canvas-subtle border border-edge space-y-1.5">
-                  <span className="text-[10px] uppercase font-semibold text-ink-muted block">Total Money & Investments</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-semibold text-ink-muted">Total Virtual Wealth</span>
+                    <span className="font-mono text-[10px] font-bold text-ink-muted">
+                      {selectedEvaluation.deltas?.formatted_wealth_delta || '₹0.00'}
+                    </span>
+                  </div>
                   <div className="flex items-baseline space-x-2 font-mono">
-                    <span className="text-ink-muted text-xs">{selectedEvaluation.before?.formatted_total}</span>
+                    <span className="text-ink-muted text-xs">
+                      {selectedEvaluation.before?.formatted_total || snapshot?.formatted_total_wealth}
+                    </span>
                     <span className="text-ink-subtle">→</span>
-                    <span className="text-base font-bold text-forest">{selectedEvaluation.after?.formatted_total}</span>
+                    <span className="text-base font-bold text-forest">
+                      {selectedEvaluation.after?.formatted_total || selectedEvaluation.resulting_state?.formatted_total_wealth}
+                    </span>
                   </div>
                   <div className="w-full bg-edge/70 rounded-full h-1 overflow-hidden mt-1">
                     <div 
                       className="h-full bg-forest rounded-full transition-all duration-700 ease-out"
                       style={{ 
-                        width: `${Math.min(100, ((selectedEvaluation.after?.total_paise || 0) / Math.max(1, selectedEvaluation.before?.total_paise || 1)) * 100)}%` 
+                        width: `${Math.min(100, ((selectedEvaluation.resulting_state?.total_virtual_wealth_paise || selectedEvaluation.after?.total_paise || 0) / Math.max(1, selectedEvaluation.before?.total_paise || snapshot?.total_virtual_wealth_paise || 1)) * 100)}%` 
                       }}
                     />
                   </div>
@@ -555,46 +807,67 @@ export default function SimulationView({ wallet, goalsData, portfolioData, onOpe
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {evaluations.map((evalItem) => {
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {evaluations.map((evalItem, idx) => {
                 const isCurrent = evalItem.choice_id === activeChoiceId;
+                const strategyBadge = getStrategyBadge(evalItem.label);
+                const StrategyIcon = strategyBadge.icon;
 
                 return (
                   <div
                     key={evalItem.choice_id}
-                    className={`rounded-2xl border p-5 space-y-3 ${
+                    className={`rounded-2xl border p-5 space-y-3.5 flex flex-col justify-between ${
                       isCurrent
                         ? 'bg-canvas-white border-forest shadow-sm ring-1 ring-forest/30'
                         : 'bg-canvas-subtle border-edge'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-forest/10 text-forest border border-forest/20 uppercase font-mono">
-                        Option {evalItem.choice_id}
-                      </span>
-                      {isCurrent && (
-                        <span className="text-[10px] font-bold text-forest">
-                          Your Selected Choice
-                        </span>
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-canvas-white border border-edge text-ink-muted">
+                            Option 0{idx + 1}
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 uppercase ${strategyBadge.className}`}>
+                            <StrategyIcon className="w-3 h-3 shrink-0" />
+                            <span>{evalItem.label}</span>
+                          </span>
+                        </div>
+                        {isCurrent && (
+                          <span className="text-[10px] font-bold text-forest">
+                            Your Choice
+                          </span>
+                        )}
+                      </div>
+
+                      <h4 className="font-serif text-sm font-bold text-ink">
+                        {evalItem.choice_title || evalItem.choice_text}
+                      </h4>
+
+                      <p className="text-xs text-ink-muted leading-relaxed">
+                        {evalItem.tradeoff_summary || evalItem.rationale}
+                      </p>
+
+                      {evalItem.educational_verdict && (
+                        <div className="p-2.5 bg-canvas-white/80 rounded-xl border border-edge/80 text-[11px] text-ink leading-relaxed">
+                          <span className="font-semibold text-forest block mb-0.5">Verdict:</span>
+                          {evalItem.educational_verdict}
+                        </div>
                       )}
                     </div>
 
-                    <h4 className="font-serif text-xs font-bold text-ink">
-                      {evalItem.choice_text}
-                    </h4>
-
-                    <p className="text-xs text-ink-muted leading-relaxed">
-                      {evalItem.rationale}
-                    </p>
-
                     <div className="pt-2 border-t border-edge text-xs font-mono grid grid-cols-2 gap-2 text-ink-muted">
                       <div>
-                        <span className="text-[10px] block text-ink-subtle">Ending Available Money:</span>
-                        <span className="text-ink font-semibold">{evalItem.after?.formatted_cash}</span>
+                        <span className="text-[10px] block text-ink-subtle">Ending Available Cash:</span>
+                        <span className="text-ink font-semibold">
+                          {evalItem.after?.formatted_cash || evalItem.resulting_state?.formatted_cash}
+                        </span>
                       </div>
                       <div>
                         <span className="text-[10px] block text-ink-subtle">Ending Savings:</span>
-                        <span className="text-ink font-semibold">{evalItem.after?.formatted_savings}</span>
+                        <span className="text-ink font-semibold">
+                          {evalItem.after?.formatted_savings || evalItem.resulting_state?.formatted_savings}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -635,7 +908,7 @@ export default function SimulationView({ wallet, goalsData, portfolioData, onOpe
               </h3>
 
               <p className="text-sm text-ink leading-relaxed font-medium">
-                {selectedEvaluation?.educational_takeaway || 'Disciplined emergency funding prevents panic liquidations of growth assets.'}
+                {selectedEvaluation?.educational_verdict || selectedEvaluation?.educational_takeaway || activeScenario?.learning_objective}
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">

@@ -24,9 +24,15 @@ export function getScenarios() {
     choices: s.choices.map(c => ({
       id: c.id,
       title: c.title,
+      text: c.title,
       summary: c.summary,
+      description: c.summary,
+      action_type: c.action_type,
       label: c.label,
-      tradeoff_summary: c.tradeoff_summary
+      tradeoff_summary: c.tradeoff_summary,
+      pros: c.pros,
+      cons: c.cons,
+      educational_verdict: c.educational_verdict
     }))
   }));
 }
@@ -47,12 +53,14 @@ export function getFinancialSnapshot(userId = DEMO_USER_ID) {
     user_id: userId,
     cash_paise: wallet.balances.current_balance_paise,
     formatted_cash: formatPaiseToINR(wallet.balances.current_balance_paise),
+    formatted_available_cash: formatPaiseToINR(wallet.balances.current_balance_paise),
     savings_paise: wallet.balances.savings_balance_paise,
     formatted_savings: formatPaiseToINR(wallet.balances.savings_balance_paise),
     emergency_fund_paise: emergencyFundGoal ? emergencyFundGoal.saved_amount_paise : 0,
     formatted_emergency_fund: formatPaiseToINR(emergencyFundGoal ? emergencyFundGoal.saved_amount_paise : 0),
     investments_market_value_paise: portfolio.valuation.total_investments_market_value_paise,
     formatted_investments: formatPaiseToINR(portfolio.valuation.total_investments_market_value_paise),
+    formatted_portfolio_value: formatPaiseToINR(portfolio.valuation.total_investments_market_value_paise),
     total_virtual_wealth_paise: portfolio.valuation.total_virtual_wealth_paise,
     formatted_total_wealth: formatPaiseToINR(portfolio.valuation.total_virtual_wealth_paise),
     holdings: (portfolio.holdings || []).map(h => ({
@@ -269,14 +277,44 @@ export function evaluateChoice(snapshot, scenario, choice) {
   return {
     choice_id: choice.id,
     choice_title: choice.title,
+    choice_text: choice.title,
     action_type: choice.action_type,
     label: choice.label,
     tradeoff_summary: choice.tradeoff_summary,
+    rationale: choice.tradeoff_summary,
     pros: choice.pros,
     cons: choice.cons,
     educational_verdict: choice.educational_verdict,
+    educational_takeaway: choice.educational_verdict,
     goal_impact_note: goalImpactNote,
     goal_progress: goalProgress,
+    before: {
+      cash_paise: snapshot.cash_paise,
+      formatted_cash: snapshot.formatted_cash,
+      savings_paise: snapshot.savings_paise,
+      formatted_savings: snapshot.formatted_savings,
+      emergency_fund_paise: snapshot.emergency_fund_paise,
+      formatted_emergency_fund: snapshot.formatted_emergency_fund,
+      investments_market_value_paise: snapshot.investments_market_value_paise,
+      formatted_investments: snapshot.formatted_investments,
+      total_paise: snapshot.total_virtual_wealth_paise,
+      formatted_total: snapshot.formatted_total_wealth
+    },
+    after: {
+      cash_paise: resultingCashPaise,
+      formatted_cash: formatPaiseToINR(resultingCashPaise),
+      savings_paise: resultingSavingsPaise,
+      formatted_savings: formatPaiseToINR(resultingSavingsPaise),
+      emergency_fund_paise: resultingEmergencyPaise,
+      formatted_emergency_fund: formatPaiseToINR(resultingEmergencyPaise),
+      investments_market_value_paise: resultingInvestmentsPaise,
+      formatted_investments: formatPaiseToINR(resultingInvestmentsPaise),
+      total_paise: resultingTotalWealthPaise,
+      formatted_total: formatPaiseToINR(resultingTotalWealthPaise)
+    },
+    delta_cash: cashDeltaPaise,
+    delta_savings: savingsDeltaPaise,
+    delta_investments: investmentsDeltaPaise,
     resulting_state: {
       cash_paise: resultingCashPaise,
       formatted_cash: formatPaiseToINR(resultingCashPaise),
